@@ -190,6 +190,28 @@ var LAYERS = {"krishna": {"n": "Krishna", "c": "#F2A33A"}, "ecovillage": {"n": "
   window.addEventListener('online',function(){note.style.display='none'; location.reload();});
   map.on('load',function(){ setTimeout(function(){ map.flyTo(Object.assign({duration:4200,essential:true},HOME)); },600); });
 
+  // trackpad gestures (iPad Magic Keyboard, Safari on Mac): pinch zooms and twists the map instead of the page
+  (function(){
+    var touches=0, g=null, el=map.getCanvasContainer();
+    function tc(e){ touches=e.touches?e.touches.length:0; }
+    ['touchstart','touchend','touchcancel'].forEach(function(t){ document.addEventListener(t,tc,{capture:true,passive:true}); });
+    function pt(e){ var r=el.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+    document.addEventListener('gesturestart',function(e){ e.preventDefault(); if(touches>0){g=null;return;}
+      map.stop(); g={z:map.getZoom(),b:map.getBearing(),around:map.unproject(pt(e))}; },{passive:false});
+    document.addEventListener('gesturechange',function(e){ e.preventDefault(); if(!g||touches>0) return;
+      var o={zoom:g.z+Math.log2(Math.max(0.05,e.scale)),duration:0,around:g.around};
+      if(Math.abs(e.rotation)>4) o.bearing=g.b-e.rotation;
+      map.easeTo(o); },{passive:false});
+    document.addEventListener('gestureend',function(e){ e.preventDefault(); g=null; },{passive:false});
+    // on iPad, a two-finger swipe on the trackpad moves the map, like dragging with a finger
+    var isPad=/iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(isPad){ map.scrollZoom.disable();
+      el.addEventListener('wheel',function(e){ e.preventDefault(); if(g) return;
+        if(e.ctrlKey){ map.easeTo({zoom:map.getZoom()-e.deltaY*0.01,around:map.unproject(pt(e)),duration:0}); return; }
+        map.panBy([e.deltaX,e.deltaY],{duration:0}); },{passive:false}); }
+    window.__gest=true;
+  })();
+
   // mode, labels, 3D
   var MAPL=['m-land','m-park','m-water','m-river','m-build'], LBL=style.layers.filter(function(l){return /^(lb-|rd-|border)/.test(l.id);}).map(function(l){return l.id;});
   function vis(ids,on){ ids.forEach(function(id){ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',on?'visible':'none'); }); }
