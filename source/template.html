@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0B1020">
+<title>Travel Globe</title>
+<style>/*MLCSS*/</style>
+<style>
+:root{--bg:#0B1020;--panel:rgba(16,22,42,.86);--line:rgba(246,238,220,.14);--ink:#F6EEDC;--dim:#A9AFC6;--gold:#F5C451}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
+#map{position:fixed;inset:0}
+.bar{position:fixed;z-index:5;display:flex;gap:8px;align-items:center}
+#top{top:14px;left:14px;right:14px;flex-wrap:wrap}
+#bottom{bottom:24px;left:14px;flex-wrap:wrap;max-width:calc(100% - 90px)}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;overflow:hidden}
+.pill button{all:unset;cursor:pointer;padding:8px 14px;color:var(--dim);font-weight:600;font-size:13px}
+.pill button.on{background:rgba(245,196,81,.16);color:var(--gold)}
+#q{all:unset;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 16px;width:230px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);font-size:13px}
+#q::placeholder{color:var(--dim)}
+#hits{position:fixed;z-index:6;top:56px;left:14px;width:300px;max-height:50vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none}
+#hits div{padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line)}#hits div:hover{background:rgba(255,255,255,.06)}#hits small{color:var(--dim);display:block}
+.chip{all:unset;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 9px;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:7px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.chip i{width:9px;height:9px;border-radius:50%;display:block}.chip.off{opacity:.38}
+#card{position:fixed;z-index:6;top:64px;right:14px;width:340px;max-width:calc(100% - 28px);max-height:calc(100% - 140px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 20px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:none}
+#card h2{margin:0 0 2px;font:600 20px/1.2 Georgia,serif}#card .where{color:var(--dim);font-size:12.5px;margin-bottom:10px}
+#card p{margin:0 0 10px}#card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 12px;font-size:12.5px}#card dt{color:var(--dim)}#card dd{margin:0}
+#card a{color:var(--gold);text-decoration:none;font-weight:600;margin-right:14px;font-size:13px}
+#card .x{position:absolute;top:10px;right:14px;cursor:pointer;color:var(--dim);font-size:18px}
+#card .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}#card .tag i{width:8px;height:8px;border-radius:50%}
+#note{position:fixed;z-index:7;left:50%;transform:translateX(-50%);bottom:64px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:12.5px;color:var(--dim);display:none;max-width:90%}
+.maplibregl-ctrl-bottom-right{bottom:20px}
+#card,#hits{touch-action:pan-y}#bottom{touch-action:pan-x}
+#attr{position:fixed;z-index:5;right:10px;bottom:5px;font-size:10px;color:rgba(246,238,220,.62);text-shadow:0 0 3px #000,0 0 6px #000;white-space:nowrap}
+#attr a{color:inherit;text-decoration:none;cursor:pointer}#attr a:hover{text-decoration:underline}
+#src{position:fixed;z-index:8;right:10px;bottom:24px;width:270px;max-width:calc(100% - 20px);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:11.5px;color:var(--dim);display:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+#src a{color:var(--ink)}
+@media (max-width:700px){
+  #top{top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;gap:6px}
+  #q{flex:1 1 100%;width:auto;font-size:16px;padding:9px 16px}
+  .pill button{padding:8px 12px;font-size:12.5px}
+  #hits{top:calc(56px + env(safe-area-inset-top));left:10px;right:10px;width:auto}
+  #bottom{left:0;right:0;max-width:none;bottom:calc(22px + env(safe-area-inset-bottom));flex-wrap:nowrap;overflow-x:auto;padding:0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #bottom::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;padding:7px 12px 7px 9px}
+  #card{top:auto;right:8px;left:8px;width:auto;max-width:none;bottom:calc(66px + env(safe-area-inset-bottom));max-height:46vh;border-radius:18px;padding:16px 18px}
+  #card h2{font-size:18px;padding-right:22px}
+  #attr{right:0;left:0;text-align:center;bottom:calc(4px + env(safe-area-inset-bottom))}
+  #src{bottom:calc(24px + env(safe-area-inset-bottom))}
+  .maplibregl-ctrl-bottom-right{bottom:calc(64px + env(safe-area-inset-bottom))}
+  .maplibregl-ctrl-zoom-in,.maplibregl-ctrl-zoom-out,.maplibregl-ctrl-scale{display:none!important}
+  #note{bottom:calc(112px + env(safe-area-inset-bottom));width:calc(100% - 24px);text-align:center}
+}
+</style></head><body>
+<div id="map"></div>
+<div class="bar" id="top">
+  <input id="q" placeholder="Search places" autocomplete="off">
+  <div class="pill" id="mode"><button data-m="sat" class="on">Satellite</button><button data-m="map">Map</button></div>
+  <div class="pill"><button id="labels" class="on">Labels</button><button id="relief">3D</button></div>
+  <div class="pill"><button id="home">Whole globe</button></div>
+</div>
+<div id="hits"></div>
+<div class="bar" id="bottom"></div>
+<div id="card"></div>
+<div id="note"></div>
+<div id="attr"><a id="attr-main" href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · <a id="attr-more">sources</a></div>
+<div id="src"></div>
+<script>/*MLJS*/</script>
+<script>
+var PLACES = /*PLACES*/;
+var LAYERS = /*LAYERS*/;
+(function(){
+  var OFM='https://tiles.openfreemap.org';
+  var ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  var EOX='https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg';
+  var NAME=['coalesce',['get','name_en'],['get','name:latin'],['get','name']];
+  var note=document.getElementById('note');
+  function say(t,ms){ note.textContent=t; note.style.display='block'; if(ms) setTimeout(function(){note.style.display='none';},ms); }
+  var fc={type:'FeatureCollection',features:PLACES.map(function(p,i){return {type:'Feature',id:i,properties:{i:i,n:p.name,l:p.layer,c:(LAYERS[p.layer]||{}).c||'#fff'},geometry:{type:'Point',coordinates:[p.lon,p.lat]}};})};
+  var W='#F6EEDC', HALO='rgba(8,12,26,.85)';
+  function road(id,filter,minz,w0,w1,op){ return {id:'rd-'+id,type:'line',source:'ofm','source-layer':'transportation',minzoom:minz,filter:filter,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':W,'line-opacity':op,'line-width':['interpolate',['exponential',1.5],['zoom'],minz,w0,18,w1]}}; }
+  var style={version:8,projection:{type:'globe'},
+    glyphs:OFM+'/fonts/{fontstack}/{range}.pbf',
+    sky:{'atmosphere-blend':['interpolate',['linear'],['zoom'],0,1,6,0.5,9,0]},
+    sources:{
+      sat:{type:'raster',tiles:[ESRI],tileSize:256,maxzoom:18,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'},
+      ofm:{type:'vector',url:OFM+'/planet'},
+      dem:{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:13,attribution:'Terrain: Mapzen, AWS'},
+      places:{type:'geojson',data:fc}
+    },
+    layers:[
+      {id:'bg',type:'background',paint:{'background-color':'#141B33'}},
+      {id:'sat',type:'raster',source:'sat',paint:{'raster-fade-duration':200}},
+      {id:'m-land',type:'fill',source:'ofm','source-layer':'landcover',layout:{visibility:'none'},paint:{'fill-color':['match',['get','class'],'wood','#1F3A36','grass','#243F38','ice','#C9D6E8','sand','#5A5440','#22352F'],'fill-opacity':0.75}},
+      {id:'m-park',type:'fill',source:'ofm','source-layer':'park',layout:{visibility:'none'},paint:{'fill-color':'#2B5A48','fill-opacity':0.45}},
+      {id:'m-water',type:'fill',source:'ofm','source-layer':'water',layout:{visibility:'none'},paint:{'fill-color':'#0A2540'}},
+      {id:'m-river',type:'line',source:'ofm','source-layer':'waterway',layout:{visibility:'none'},paint:{'line-color':'#1B4A75','line-width':['interpolate',['linear'],['zoom'],8,0.6,16,3]}},
+      {id:'m-build',type:'fill',source:'ofm','source-layer':'building',minzoom:13,layout:{visibility:'none'},paint:{'fill-color':'#2C3555','fill-opacity':0.9}},
+      {id:'hill',type:'hillshade',source:'dem',layout:{visibility:'none'},paint:{'hillshade-exaggeration':0.35,'hillshade-shadow-color':'#05070F','hillshade-highlight-color':'#FFFFFF','hillshade-accent-color':'#05070F'}},
+      {id:'border',type:'line',source:'ofm','source-layer':'boundary',filter:['all',['<=',['get','admin_level'],4],['!=',['get','maritime'],1]],paint:{'line-color':W,'line-opacity':['match',['get','admin_level'],2,0.55,0.25],'line-width':['match',['get','admin_level'],2,1.1,0.6],'line-dasharray':[3,2]}},
+      road('path',['in',['get','class'],['literal',['path','track']]],13,0.4,2.5,0.35),
+      road('minor',['in',['get','class'],['literal',['minor','service']]],12,0.4,7,0.4),
+      road('mid',['in',['get','class'],['literal',['secondary','tertiary']]],9,0.5,11,0.5),
+      road('main',['in',['get','class'],['literal',['motorway','trunk','primary']]],5,0.6,15,0.6),
+      {id:'lb-road',type:'symbol',source:'ofm','source-layer':'transportation_name',minzoom:13,layout:{'symbol-placement':'line','text-field':NAME,'text-font':['Noto Sans Regular'],'text-size':11},paint:{'text-color':W,'text-halo-color':HALO,'text-halo-width':1.3}},
+      {id:'lb-water',type:'symbol',source:'ofm','source-layer':'water_name',layout:{'text-field':NAME,'text-font':['Noto Sans Italic'],'text-size':['interpolate',['linear'],['zoom'],1,11,8,14],'text-max-width':7,'text-letter-spacing':0.1},paint:{'text-color':'#9CC4EA','text-halo-color':HALO,'text-halo-width':1.2}},
+      {id:'lb-peak',type:'symbol',source:'ofm','source-layer':'mountain_peak',minzoom:9,layout:{'text-field':NAME,'text-font':['Noto Sans Italic'],'text-size':11},paint:{'text-color':'#D9CDB4','text-halo-color':HALO,'text-halo-width':1.2}},
+      {id:'lb-small',type:'symbol',source:'ofm','source-layer':'place',minzoom:9,filter:['in',['get','class'],['literal',['village','suburb','hamlet','neighbourhood','quarter','isolated_dwelling']]],layout:{'text-field':NAME,'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],9,10.5,15,13],'text-max-width':8},paint:{'text-color':W,'text-opacity':0.9,'text-halo-color':HALO,'text-halo-width':1.3}},
+      {id:'lb-town',type:'symbol',source:'ofm','source-layer':'place',minzoom:4,filter:['in',['get','class'],['literal',['city','town']]],layout:{'symbol-sort-key':['coalesce',['get','rank'],20],'text-field':NAME,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],4,['match',['get','class'],'city',12,10],12,['match',['get','class'],'city',18,14]],'text-max-width':8},paint:{'text-color':W,'text-halo-color':HALO,'text-halo-width':1.5}},
+      {id:'lb-state',type:'symbol',source:'ofm','source-layer':'place',minzoom:3.5,maxzoom:8,filter:['==',['get','class'],'state'],layout:{'text-field':NAME,'text-font':['Noto Sans Regular'],'text-size':11,'text-transform':'uppercase','text-letter-spacing':0.14,'text-max-width':7},paint:{'text-color':W,'text-opacity':0.7,'text-halo-color':HALO,'text-halo-width':1.2}},
+      {id:'lb-country',type:'symbol',source:'ofm','source-layer':'place',maxzoom:7,filter:['==',['get','class'],'country'],layout:{'symbol-sort-key':['coalesce',['get','rank'],20],'text-field':NAME,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],1,10,6,17],'text-transform':'uppercase','text-letter-spacing':0.1,'text-max-width':7},paint:{'text-color':W,'text-halo-color':HALO,'text-halo-width':1.5}},
+      {id:'place-glow',type:'circle',source:'places',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,6,6,14,12,22],'circle-color':['get','c'],'circle-blur':1,'circle-opacity':0.55}},
+      {id:'places',type:'circle',source:'places',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,3.2,6,6.5,12,8],'circle-color':['get','c'],'circle-stroke-color':W,'circle-stroke-width':['interpolate',['linear'],['zoom'],1,0.8,6,1.6]}},
+      {id:'place-labels',type:'symbol',source:'places',minzoom:4.5,layout:{'text-field':['get','n'],'text-font':['Noto Sans Bold'],'text-size':12.5,'text-offset':[0,1.1],'text-anchor':'top','text-max-width':10},paint:{'text-color':'#F5C451','text-halo-color':HALO,'text-halo-width':1.5}}
+    ]};
+  var HOME={center:[153.4,-28.5],zoom:8.2,pitch:0,bearing:0};
+  var map=window.map=new maplibregl.Map({container:'map',style:style,center:[140,-20],zoom:1.8,maxZoom:19.5,maxPitch:75,attributionControl:false});
+  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-right');
+  var SRC={sat:'Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community.'};
+  var VER='17 Nov, version 4';
+  function drawSrc(){ var D=window.__diag||{g:0,w:0}, vv=window.visualViewport; document.getElementById('src').innerHTML='<div style="opacity:.7;margin-bottom:6px">Travel Globe · '+VER+' · check '+D.g+'/'+D.w+'/'+(vv?vv.scale.toFixed(2):'?')+'</div>'+SRC.sat+'<br>Roads and names: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, © OpenMapTiles, data © OpenStreetMap contributors.<br>Terrain: Mapzen terrain tiles on AWS.<br>Map engine: MapLibre.'; }
+  drawSrc();
+  document.getElementById('attr-more').onclick=function(){ drawSrc(); var e=document.getElementById('src'); e.style.display=e.style.display==='block'?'none':'block'; };
+  // imagery check: sharp source first, Sentinel-2 as the stand-in
+  var probe=new Image(); probe.onerror=function(){
+    function swap(){ try{ if(map.getLayer('sat')) map.removeLayer('sat'); if(map.getSource('sat')) map.removeSource('sat');
+      map.addSource('sat',{type:'raster',tiles:[EOX],tileSize:256,maxzoom:14,attribution:'Sentinel-2 cloudless by EOX'});
+      map.addLayer({id:'sat',type:'raster',source:'sat',layout:{visibility:mode==='sat'?'visible':'none'}},'m-land'); }catch(e){ console.warn(e); } }
+    if(map.isStyleLoaded()) swap(); else map.once('style.load',swap);
+    say('Sharp imagery could not be reached, showing the softer Sentinel-2 imagery instead.',9000);
+    window.__fallback=true; var am=document.getElementById('attr-main'); am.textContent='Sentinel-2 cloudless by EOX'; am.href='https://s2maps.eu'; SRC.sat='Imagery: Sentinel-2 cloudless 2024 by EOX IT Services GmbH (contains modified Copernicus Sentinel data).'; drawSrc();
+  }; probe.src=ESRI.replace('{z}',3).replace('{y}',4).replace('{x}',7);
+  if(!navigator.onLine) say('No internet right now. This version needs a connection to load the map.');
+  window.addEventListener('online',function(){note.style.display='none'; location.reload();});
+  map.on('load',function(){ setTimeout(function(){ map.flyTo(Object.assign({duration:4200,essential:true},HOME)); },600); });
+
+  // trackpad gestures (iPad Magic Keyboard, Safari on Mac): pinch zooms and twists the map instead of the page
+  (function(){
+    var touches=0, g=null, el=map.getCanvasContainer(); var D=window.__diag={g:0,w:0};
+    function tc(e){ touches=e.touches?e.touches.length:0; }
+    ['touchstart','touchend','touchcancel'].forEach(function(t){ document.addEventListener(t,tc,{capture:true,passive:true}); });
+    function pt(e){ var r=el.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+    document.addEventListener('gesturestart',function(e){ e.preventDefault(); D.g++; if(touches>0){g=null;return;}
+      map.stop(); g={z:map.getZoom(),b:map.getBearing(),around:map.unproject(pt(e))}; },{passive:false});
+    document.addEventListener('gesturechange',function(e){ e.preventDefault(); if(!g||touches>0) return;
+      var o={zoom:g.z+Math.log2(Math.max(0.05,e.scale)),duration:0,around:g.around};
+      if(Math.abs(e.rotation)>4) o.bearing=g.b-e.rotation;
+      map.easeTo(o); },{passive:false});
+    document.addEventListener('gestureend',function(e){ e.preventDefault(); g=null; },{passive:false});
+    // pinch that arrives as a ctrl+wheel (some browsers and trackpads): never let it zoom the page
+    document.addEventListener('wheel',function(e){ if(!e.ctrlKey) return; D.w++; e.preventDefault();
+      if(!el.contains(e.target)) map.easeTo({zoom:map.getZoom()-e.deltaY*0.01,duration:0}); },{passive:false,capture:true});
+    // on iPad, a two-finger swipe on the trackpad moves the map, like dragging with a finger
+    var isPad=/iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(isPad){ map.scrollZoom.disable();
+      el.addEventListener('wheel',function(e){ e.preventDefault(); if(g) return;
+        if(e.ctrlKey){ map.easeTo({zoom:map.getZoom()-e.deltaY*0.01,around:map.unproject(pt(e)),duration:0}); return; }
+        map.panBy([e.deltaX,e.deltaY],{duration:0}); },{passive:false}); }
+    window.__gest=true;
+  })();
+
+  // mode, labels, 3D
+  var MAPL=['m-land','m-park','m-water','m-river','m-build'], LBL=style.layers.filter(function(l){return /^(lb-|rd-|border)/.test(l.id);}).map(function(l){return l.id;});
+  function vis(ids,on){ ids.forEach(function(id){ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',on?'visible':'none'); }); }
+  var mode='sat', labels=true, relief=false;
+  function apply(){ vis(['sat'],mode==='sat'); vis(MAPL,mode==='map'); vis(LBL,labels||mode==='map'); vis(['hill'],mode==='map'||relief);
+    map.setTerrain(relief?{source:'dem',exaggeration:1.4}:null); }
+  document.querySelectorAll('#mode button').forEach(function(b){ b.onclick=function(){ mode=b.dataset.m; document.querySelectorAll('#mode button').forEach(function(x){x.classList.toggle('on',x===b);}); apply(); }; });
+  document.getElementById('labels').onclick=function(){ labels=!labels; this.classList.toggle('on',labels); apply(); };
+  document.getElementById('relief').onclick=function(){ relief=!relief; this.classList.toggle('on',relief); apply(); if(relief&&map.getPitch()<20) map.easeTo({pitch:55,duration:1200}); if(!relief) map.easeTo({pitch:0,duration:800}); };
+  document.getElementById('home').onclick=function(){ map.flyTo({center:[140,-15],zoom:1.8,pitch:0,bearing:0,duration:2500}); };
+
+  // layer chips
+  var off={}, bottom=document.getElementById('bottom');
+  Object.keys(LAYERS).forEach(function(k){ var n=PLACES.filter(function(p){return p.layer===k;}).length; if(!n) return;
+    var b=document.createElement('button'); b.className='chip'; b.innerHTML='<i style="background:'+LAYERS[k].c+'"></i>'+LAYERS[k].n+' <span style="color:var(--dim)">'+n+'</span>';
+    b.onclick=function(){ off[k]=!off[k]; b.classList.toggle('off',!!off[k]); var f=['!',['in',['get','l'],['literal',Object.keys(off).filter(function(x){return off[x];})]]]; ['place-glow','places','place-labels'].forEach(function(id){map.setFilter(id,f);}); };
+    bottom.appendChild(b); });
+
+  // card
+  var card=document.getElementById('card');
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function row(k,v){ return v?'<dt>'+k+'</dt><dd>'+esc(v)+'</dd>':''; }
+  function show(i,fly){ var p=PLACES[i], L=LAYERS[p.layer]||{n:p.layer,c:'#fff'};
+    var stars=p.kv?'✦'.repeat(p.kv)+'<span style="opacity:.25">'+'✦'.repeat(Math.max(0,3-p.kv))+'</span>':'';
+    card.innerHTML='<span class="x">×</span><div class="tag"><i style="background:'+L.c+'"></i>'+esc(L.n)+'</div><h2>'+esc(p.name)+'</h2><div class="where">'+esc(p.country||'')+(p.status==='approx'?' · location approximate':'')+'</div>'
+      +(p.vibe?'<p>'+esc(p.vibe)+'</p>':'')+'<dl>'+row('Who',p.who)+row('People',p.people)+row('Feel',p.social)+row('Cost',p.cost)+row('Stay',p.stay)+(stars?'<dt>Krishna Village feel</dt><dd style="color:var(--gold)">'+stars+'</dd>':'')+'</dl>'
+      +(p.link?'<a href="'+esc(p.link)+'" target="_blank" rel="noopener">Website</a>':'')+'<a href="https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lon+'" target="_blank" rel="noopener">Google Maps</a><a href="#" id="zin">Zoom in</a>';
+    card.style.display='block'; card.querySelector('.x').onclick=function(){card.style.display='none';};
+    card.querySelector('#zin').onclick=function(e){ e.preventDefault(); map.flyTo({center:[p.lon,p.lat],zoom:16,duration:3000}); };
+    if(fly) map.flyTo({center:[p.lon,p.lat],zoom:Math.max(map.getZoom(),11),duration:2600}); }
+  map.on('click','places',function(e){ show(e.features[0].properties.i,false); });
+  map.on('mouseenter','places',function(){ map.getCanvas().style.cursor='pointer'; });
+  map.on('mouseleave','places',function(){ map.getCanvas().style.cursor=''; });
+
+  // search
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  q.oninput=function(){ var s=q.value.trim().toLowerCase(); if(s.length<2){hits.style.display='none';return;}
+    var r=[]; PLACES.forEach(function(p,i){ if((p.name+' '+(p.country||'')+' '+(p.region||'')).toLowerCase().indexOf(s)>=0) r.push(i); });
+    hits.innerHTML=r.slice(0,30).map(function(i){return '<div data-i="'+i+'">'+esc(PLACES[i].name)+'<small>'+esc(PLACES[i].country||'')+'</small></div>';}).join('')||'<div>No matches</div>';
+    hits.style.display='block'; };
+  hits.onclick=function(e){ var d=e.target.closest('[data-i]'); if(!d) return; hits.style.display='none'; q.value=''; show(+d.dataset.i,true); };
+  map.on('click',function(){ hits.style.display='none'; document.getElementById('src').style.display='none'; });
+  map.on('movestart',function(){ if(document.activeElement===q) q.blur(); });
+})();
+</script></body></html>
